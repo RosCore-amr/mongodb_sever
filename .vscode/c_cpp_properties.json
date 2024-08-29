@@ -1,0 +1,53 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/mm/multiple_robot/install/turtlebot3_fake_node/include/**",
+        "/home/mm/multiple_robot/install/turtlebot3_msgs/include/**",
+        "/home/mm/multiple_robot/install/turtlebot3_gazebo/include/**",
+        "/home/mm/multiple_robot/install/rmf_workcell_msgs/include/**",
+        "/home/mm/multiple_robot/install/rmf_traffic_msgs/include/**",
+        "/home/mm/multiple_robot/install/rmf_task_msgs/include/**",
+        "/home/mm/multiple_robot/install/rmf_site_map_msgs/include/**",
+        "/home/mm/multiple_robot/install/rmf_scheduler_msgs/include/**",
+        "/home/mm/multiple_robot/install/rmf_obstacle_msgs/include/**",
+        "/home/mm/multiple_robot/install/rmf_lift_msgs/include/**",
+        "/home/mm/multiple_robot/install/rmf_ingestor_msgs/include/**",
+        "/home/mm/multiple_robot/install/rmf_fleet_msgs/include/**",
+        "/home/mm/multiple_robot/install/rmf_door_msgs/include/**",
+        "/home/mm/multiple_robot/install/rmf_dispenser_msgs/include/**",
+        "/home/mm/multiple_robot/install/rmf_charger_msgs/include/**",
+        "/home/mm/multiple_robot/install/dynamixel_sdk_custom_interfaces/include/**",
+        "/home/mm/multiple_robot/install/dynamixel_sdk/include/**",
+        "/home/mm/demo_fleet/install/rmf_task/include/**",
+        "/home/mm/demo_fleet/install/rmf_battery/include/**",
+        "/home/mm/demo_fleet/install/rmf_utils/include/**",
+        "/home/mm/demo_fleet/install/rmf_traffic_editor/include/**",
+        "/home/mm/ws_learn/install/tutorial_interfaces/include/**",
+        "/opt/ros/humble/include/**",
+        "/home/mm/multiple_robot/src/DynamixelSDK/dynamixel_sdk/include/**",
+        "/home/mm/multiple_robot/src/DynamixelSDK/dynamixel_sdk_examples/include/**",
+        "/home/mm/multiple_robot/src/algorithm_robot/include/**",
+        "/home/mm/multiple_robot/src/examples/rclcpp/composition/minimal_composition/include/**",
+        "/home/mm/multiple_robot/src/examples/rclcpp/executors/cbg_executor/include/**",
+        "/home/mm/multiple_robot/src/examples/rclcpp/wait_set/include/**",
+        "/home/mm/multiple_robot/src/free_fleet_demo/free_fleet/free_fleet/include/**",
+        "/home/mm/multiple_robot/src/free_fleet_demo/free_fleet/free_fleet_client_ros2/include/**",
+        "/home/mm/multiple_robot/src/turtlebot3/turtlebot3_node/include/**",
+        "/home/mm/multiple_robot/src/turtlebot3_simulations/turtlebot3_fake_node/include/**",
+        "/home/mm/multiple_robot/src/turtlebot3_simulations/turtlebot3_gazebo/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

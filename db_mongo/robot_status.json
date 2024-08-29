@@ -1,0 +1,8 @@
+{
+    "robot_name": "robot_7",
+    "battery": 40,
+    "status" : "EMG" ,
+    "mission" : "Runing",
+    "robot_type" : "amr", 
+    "ip" : "192.168.0.1"
+  }
