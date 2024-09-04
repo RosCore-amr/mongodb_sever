@@ -44,6 +44,7 @@ class QueryDB:
     MISIONS = "missions"
     ACCOUNT = "accounts"
     ROLE = "roles"
+    ACTIVITIES = "robot_activites"
 
 
 @dataclass
@@ -66,6 +67,7 @@ class MongoDB:
             QueryDB.WAIT_LOCATION,
             QueryDB.MISIONS,
             QueryDB.ACCOUNT,
+            QueryDB.ACTIVITIES,
             # QueryDB.ROLE,
         ]
 
@@ -99,6 +101,11 @@ class MongoDB:
             "robot_type": "initial",
             "ip": "000.000.0.0",
         }
+        robot_activity = {
+            "robot_name": "initial",
+            "msg": "test_initial",
+            "date": "08-28-09:21:20",
+        }
         initial_mapping = [
             value_robot_status,
             value_location,
@@ -106,11 +113,8 @@ class MongoDB:
             value_location,
             value_mission,
             value_account,
+            robot_activity,
         ]
-
-        # for initial in range(len(list_db)):
-        #     print(list_db[initial])
-        #     print(initial_mapping[initial])
 
         database_name = self.client.list_database_names()
         self.work_db = self.client[project]
@@ -120,12 +124,15 @@ class MongoDB:
                 collection = self.work_db[list_db[initial]]
                 collection.insert_one(initial_mapping[initial])
 
+        # for i in range(1, 7):
+        #     self.built_location(QueryDB.WAIT_LOCATION, i)
+
     def built_location(self, _area, n_location):
 
         # area = "pickup_locations"
         _collection = self.work_db[_area]
         document = {
-            "name": "zone" + str(n_location),
+            "name": "vt" + str(n_location),
             "line": n_location,
             "point": "LM1",
             "model": "",
@@ -137,18 +144,55 @@ class MongoDB:
         _collection = collection.insert_one(data)
         return _collection.acknowledged
 
+    def delete_db(self, _area, date_delete):
+        collection = self.work_db[_area]
+        result_code = {"code": 0}
+
+        _collection = collection.find_one_and_delete(date_delete)
+        if _collection is not None:
+            result_code = {"code": 1}
+            _collection.update(result_code)
+            return self.json_payload(_collection)
+        return result_code
+
+    def clear_row(self, _area, data_search):
+        collection = self.work_db[_area]
+        _collection = collection.delete_many(data_search)
+
     def test_db(self):
         return "ok query success"
 
     def creat_accounts(self, _username, _password, _role):
         area = QueryDB.ACCOUNT
         _collection = self.work_db[area]
-        x = {"username": _username, "password": _password, "role": _role}
+        value_creat = {"username": _username, "password": _password, "role": _role}
         if _collection.find_one({"username": _username}) != None:
             return "account already exists"
         else:
-            self.import_db(_collection, x)
+            self.import_db(_collection, value_creat)
             return "creat success acoount "
+
+    def creat_robots(self, _area, comtemplate, creator):
+        _collection = self.work_db[_area]
+        # print(_collection.find_one({"robot_name": comtemplate["robot_code"]}))
+
+        if _collection.find_one({"robot_name": comtemplate["robot_code"]}) != None:
+            return False
+        else:
+            self.import_db(_collection, comtemplate)
+            return "creat success acoount "
+
+    def robot_operating(self, msg):
+        area = QueryDB.ACTIVITIES
+        _collection = self.work_db[area]
+        mess_update = {
+            "robot_code": msg["robot_code"],
+            "msg": msg["msg"],
+            "date": datetime.now(),
+        }
+        if self.import_db(_collection, mess_update):
+            return "update success "
+        return False
 
     def check_accounts(self, _username, _password):
         area = QueryDB.ACCOUNT
@@ -163,6 +207,16 @@ class MongoDB:
             # return "account already exists"
         else:
             return None
+
+    def update_account(self, account):
+        area = QueryDB.ACCOUNT
+        _collection = self.work_db[area]
+        search_robot = {"username": account["username"]}
+        value_update = {"$set": account}
+        _query = _collection.find_one_and_update(search_robot, value_update)
+        if _query == None:
+            return False
+        return self.json_payload(_query)
 
     def update_robot_status(self, _robot_name, _status, _mission, _battery):
         area = QueryDB.STATUS_RB
@@ -179,7 +233,6 @@ class MongoDB:
             # "$setOnInsert": {"created_update": datetime.now()},
             # "$currentDate": {"lastUpdate": datetime.now()},
         }
-        # print(" datetime.now()", datetime.now())
         # db.collection.updateOne(
         #     {"key": 5},
         #     {
@@ -195,6 +248,21 @@ class MongoDB:
         )
         if _update.raw_result["n"]:
             return True
+        return False
+
+    def query_database(self, _area, _search):
+        _collection = self.work_db[_area]
+        _query = _collection.find_one(_search)
+        if _query is not None:
+            # res = {
+            #     "name": _query["name"],
+            #     "line": _query["line"],
+            #     "point": _query["point"],
+            #     "model": _query["model"],
+            #     "kitting": _query["kitting"],
+            # }
+            _query.pop("_id", None)
+            return _query
         return False
 
     def query_robot_status(self, _robot_name):
@@ -243,21 +311,6 @@ class MongoDB:
             response.append(self.json_payload(location))
         return response
 
-    def query_database(self, _area, _search):
-        _collection = self.work_db[_area]
-        _query = _collection.find_one(_search)
-        if _query is not None:
-            # res = {
-            #     "name": _query["name"],
-            #     "line": _query["line"],
-            #     "point": _query["point"],
-            #     "model": _query["model"],
-            #     "kitting": _query["kitting"],
-            # }
-            _query.pop("_id", None)
-            return _query
-        return False
-
     def update_database(self, area, location, value, username):
         _collection = self.work_db[area]
         status_list = {"username": username, "date": datetime.now()}
@@ -298,9 +351,8 @@ class MongoDB:
             return self.json_payload(storage)
         return False
 
-    def histories_mission_request(self, max_n):
-        area = QueryDB.MISIONS
-        _collection = self.work_db[area]
+    def histories_mission_request(self, _area, max_n):
+        _collection = self.work_db[_area]
         _missions = _collection.find().limit(max_n)
         response = []
         for mission in _missions:
