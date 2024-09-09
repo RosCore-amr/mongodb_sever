@@ -1,6 +1,6 @@
-{
-
-    "model": "update_test",
-    "kitting": true,
-    "name": "zone1"
+{   "name": "amr_kitting",
+    "line": "amr_kitting",
+    "point": "LM1",
+    "model": "",
+    "location_status": 5
 }

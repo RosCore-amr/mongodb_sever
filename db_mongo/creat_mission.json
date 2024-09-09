@@ -1,0 +1,10 @@
+{
+    "entry_location": {
+        "location_code": "zone1",
+        "map_code" : "pickup_locations"
+    },
+    "end_location":  {
+        "location_code": "zone5",
+        "map_code" : "pickup_locations"
+    }
+}

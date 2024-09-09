@@ -17,9 +17,18 @@ import copy
 from bson import json_util, ObjectId
 from dataclasses import dataclass
 from bson.timestamp import Timestamp
-import datetime as dt
 
 # pydantic.Json.ENCODERS_BY_TYPE[ObjectId] = str
+
+from config import (
+    MainState,
+    TaskStatus,
+    SignalCallbox,
+    # MissionStatus,
+    DeviceControl,
+    Sectors,
+    LocationStatus,
+)
 
 
 class LogLevel:
@@ -45,6 +54,7 @@ class QueryDB:
     ACCOUNT = "accounts"
     ROLE = "roles"
     ACTIVITIES = "robot_activites"
+    EXCUTE_MISSION = "mission_excute"
 
 
 @dataclass
@@ -90,11 +100,11 @@ class MongoDB:
             "pickup_location": "initial",
             "return_location": "initial",
             "sector": "",
-            "current_state": "initial ",
+            "mission_state": "initial ",
             "creatAT": "00-00-00:00:00",
         }
         value_robot_status = {
-            "robot_name": "initial",
+            "robot_code": "initial",
             "battery": 100,
             "status": "initial",
             "mission": "initial",
@@ -102,7 +112,7 @@ class MongoDB:
             "ip": "000.000.0.0",
         }
         robot_activity = {
-            "robot_name": "initial",
+            "robot_code": "initial",
             "msg": "test_initial",
             "date": "08-28-09:21:20",
         }
@@ -124,6 +134,14 @@ class MongoDB:
                 collection = self.work_db[list_db[initial]]
                 collection.insert_one(initial_mapping[initial])
 
+        # _location = {"location_status": 1}
+        # occupy_location = {"$set": _location}
+        # search_location = {"name": "zone1"}
+        # filled = self.filled_data(
+        #     QueryDB.PICKUP_LOCATION, search_location, occupy_location
+        # )
+
+        # self.filled_data(QueryDB.PICKUP_LOCATION, "zone1", 7)
         # for i in range(1, 7):
         #     self.built_location(QueryDB.WAIT_LOCATION, i)
 
@@ -132,11 +150,12 @@ class MongoDB:
         # area = "pickup_locations"
         _collection = self.work_db[_area]
         document = {
-            "name": "vt" + str(n_location),
+            "name": "vr" + str(n_location),
             "line": n_location,
             "point": "LM1",
             "model": "",
             "kitting": True,
+            "location_status": 5,
         }
         _collection.insert_one(document)
 
@@ -146,18 +165,19 @@ class MongoDB:
 
     def delete_db(self, _area, date_delete):
         collection = self.work_db[_area]
-        result_code = {"code": 0}
+        _result_code = {"code": 0}
 
         _collection = collection.find_one_and_delete(date_delete)
         if _collection is not None:
-            result_code = {"code": 1}
-            _collection.update(result_code)
+            _result_code = {"code": 1}
+            _collection.update(_result_code)
             return self.json_payload(_collection)
-        return result_code
+        return _result_code
 
     def clear_row(self, _area, data_search):
         collection = self.work_db[_area]
-        _collection = collection.delete_many(data_search)
+        # _collection = collection.delete_many(data_search)
+        # _collection = collection.
 
     def test_db(self):
         return "ok query success"
@@ -174,9 +194,9 @@ class MongoDB:
 
     def creat_robots(self, _area, comtemplate, creator):
         _collection = self.work_db[_area]
-        # print(_collection.find_one({"robot_name": comtemplate["robot_code"]}))
+        comtemplate.update({"lastUpdate": {"date": datetime.now()}})
 
-        if _collection.find_one({"robot_name": comtemplate["robot_code"]}) != None:
+        if _collection.find_one({"robot_code": comtemplate["robot_code"]}) != None:
             return False
         else:
             self.import_db(_collection, comtemplate)
@@ -218,21 +238,18 @@ class MongoDB:
             return False
         return self.json_payload(_query)
 
-    def update_robot_status(self, _robot_name, _status, _mission, _battery):
+    def update_robot_status(self, status_code):
         area = QueryDB.STATUS_RB
         _collection = self.work_db[area]
-        # _query = _collection.find_one({"robot_name": _robot_name})
-        search_robot = {"robot_name": _robot_name}
+        _result_code = {"code": 0}
+        search_robot = {"robot_code": status_code["robot_code"]}
+        status_code.update({"lastUpdate": {"date": datetime.now()}})
         value_update = {
-            "$set": {
-                "status": _status,
-                "mission": _mission,
-                "battery": _battery,
-                "lastUpdate": {"date": datetime.now(), "estimate_ability": 10},
-            },
+            "$set": status_code
             # "$setOnInsert": {"created_update": datetime.now()},
             # "$currentDate": {"lastUpdate": datetime.now()},
         }
+
         # db.collection.updateOne(
         #     {"key": 5},
         #     {
@@ -241,55 +258,33 @@ class MongoDB:
         #     },
         #     upsert=True,
         # )
-        _update = _collection.update_one(
+        _update = _collection.find_one_and_update(
             search_robot,
             value_update,
-            upsert=True,
+            upsert=False,
         )
-        if _update.raw_result["n"]:
-            return True
-        return False
-
-    def query_database(self, _area, _search):
-        _collection = self.work_db[_area]
-        _query = _collection.find_one(_search)
-        if _query is not None:
-            # res = {
-            #     "name": _query["name"],
-            #     "line": _query["line"],
-            #     "point": _query["point"],
-            #     "model": _query["model"],
-            #     "kitting": _query["kitting"],
-            # }
-            _query.pop("_id", None)
-            return _query
-        return False
+        # return _update
+        if _update is not None:
+            _result_code = {"code": 1}
+            return _result_code
+        return _result_code
 
     def query_robot_status(self, _robot_name):
         area = QueryDB.STATUS_RB
         _collection = self.work_db[area]
-        # _query = _collection.find_one({"robot_name": _robot_name[i]})
-        search_robot = {"robot_name": _robot_name}
+        search_robot = {"robot_code": _robot_name}
         response = []
-        # for i in range(len(_robot_name)):
         _query = _collection.find_one(search_robot)
         if _query == None:
             return False
 
         return self.json_payload(_query)
-        # res = {
-        #     "robot_name": _query["robot_name"],
-        #     "status": _query["status"],
-        #     "mission": _query["mission"],
-        #     "battery": _query["battery"],
-        # }
-        # return res
 
     def query_all_robot(self, _robot_type):
         area = QueryDB.STATUS_RB
-        search_robot = {"robot_type": _robot_type}
+        # search_robot = {"robot_type": _robot_type}
         _collection = self.work_db[area]
-        curr = _collection.find(search_robot)
+        curr = _collection.find()
         response = []
 
         for amr in curr:
@@ -317,49 +312,247 @@ class MongoDB:
         value.update({"status_list": status_list})
 
         value_update = {"$set": value}
-        _update = _collection.update_one(location, value_update)
-        if _update.raw_result["n"]:
-            return True
-        return False
+        _update = _collection.find_one_and_update(
+            location,
+            value_update,
+            upsert=False,
+        )
+        # print(_update)
+        if _update is None:
+            return None
+        return self.json_payload(_update)
+        # if _update.raw_result["n"]:
+        #     return True
+        # return False
 
-    def find_sector(self, zone):
-        search_location = {"name": zone}
-        value = self.query_database(QueryDB.PICKUP_LOCATION, search_location)
-        if value is not None and value:
-            return value["model"]
-        return ""
+    def update_excute_mission(self, area, location, value, username):
+        _collection = self.work_db[area]
+        value_update = {"$push": {"mission_excute": value}}
+        # value_pop = {"$pop": {"mission_excute": -1}}
+        # print("value_update", value_set)
+        _update = _collection.find_one_and_update(
+            location,
+            value_update,
+            # upsert=False,
+        )
+        # print(_update)
+        return self.json_payload(_update)
 
-    def creat_missions(self, mission_value, creator):
+    def pop_excute_mission(self, area, location, username):
+        _collection = self.work_db[area]
+        # value_update = {"$push": {"mission_excute": value}}
+        value_pop = {"$pop": {"mission_excute": -1}}
+        _find = _collection.find_one_and_update(
+            location,
+            value_pop,
+        )
+        if len(_find["mission_excute"]) == 0:
+            return {"code": 0, "msg": "khong co nhiem vu trong nao ca "}
+        # print("fu", _find["mission_excute"])
+        body_update = {"mission_next": _find["mission_excute"][0]}
+
+        value_update = {"$set": body_update}
+        _update = _collection.find_one_and_update(
+            location,
+            value_update,
+            upsert=False,
+        )
+        _update.update({"code : 1 "})
+        return self.json_payload(_update)
+
+    def occupy_location(self, _occupe_location, creator):
+
+        for i in range(len(_occupe_location)):
+            area = _occupe_location[i]["map_code"]
+            location = {"name": _occupe_location[i]["location_code"]}
+            _location_update = {"location_status": 8}
+            _update = self.update_database(area, location, _location_update, creator)
+            # print("_update", _update)
+            # print("area", area)
+            if _update is None:
+                return None
+        return _update
+
+    def query_database(self, _area, _search):
+        _collection = self.work_db[_area]
+        _query = _collection.find_one(_search)
+        if _query is not None:
+            _query.pop("_id", None)
+            return _query
+        return None
+
+    def search_many(self, _area, _search):
+        _collection = self.work_db[_area]
+        _query = _collection.find(_search)
+        # _missions = _collection.find(
+        #     {
+        #         "creatAT": {
+        #             "$lt": datetime.now(),
+        #             "$gt": datetime.now() - timedelta(hours=datetime.now().hour + 1),
+        #         }
+        #     }
+        # )
+        response = []
+        for amr in _query:
+
+            response.append(self.json_payload(amr))
+        response.reverse()
+        return response
+
+    # def find_sector(self, zone):
+    #     search_location = {"name": zone}
+    #     value = self.query_database(QueryDB.PICKUP_LOCATION, search_location)
+    #     if value is not None and value:
+    #         return value["model"]
+    #     return ""
+
+    def searching_stock_available(
+        self,
+        _location_code,
+        _permission_task,
+    ):
+        area = QueryDB.PICKUP_LOCATION
+        if _permission_task == 3:
+
+            search_location = {"line": _location_code}
+            _error_code = "There are currently no components in stock"
+        elif _permission_task == 5:
+            search_location = {"name": _location_code}
+            _error_code = "There are no vacancies under the warehouse"
+        else:
+            return None
+        _query = self.query_database(area, search_location)
+        if _query is None:
+            return None
+        if _query["location_status"] != _permission_task:
+            _query.update({"code": 0, "msg": _error_code})
+            return _query
+        _query.update({"code": 1})
+        return _query
+
+    def mission_processing(self, mission_value, creator):
+
+        entry_location = mission_value["entry_location"]
+        ensure_entry_location = self.searching_stock_available(
+            entry_location["map_code"],
+            entry_location["location_code"],
+            1,
+            "location where no vehicle is eligible to operate",
+        )
+
+        end_location = mission_value["end_location"]
+        ensure_end_location = self.searching_stock_available(
+            end_location["map_code"],
+            end_location["location_code"],
+            5,
+            "The position must be vacant.",
+        )
+
+        if ensure_entry_location is None or ensure_end_location is None:
+            return {"code": 0, "msg": "location is not exsit"}
+        if not ensure_entry_location["code"]:
+            res = {
+                "code": 0,
+                "map_code": entry_location["map_code"],
+                "location_code": entry_location["location_code"],
+                "location_status": ensure_entry_location["location_status"],
+                "need_status": 1,
+                "msg": ensure_entry_location["error_code"],
+            }
+            return res
+
+        if not ensure_end_location["code"]:
+            res = {
+                "code": 0,
+                "map_code": end_location["map_code"],
+                "location_code": end_location["location_code"],
+                "location_status": ensure_end_location["location_status"],
+                "need_status": 5,
+                "msg": ensure_end_location["error_code"],
+            }
+            return res
+        # area = QueryDB.MISIONS
+        # _collection = self.work_db[area]
+        # check_entry_location = self.searching_stock_available (mission_value[""])
+        if ensure_entry_location["code"] == 2 and ensure_end_location["code"] == 2:
+            _occupe_location = [entry_location, end_location]
+            occupe_status = self.occupy_location(_occupe_location, creator)
+            # occupe_status = True
+            if occupe_status is not None:
+                occupy_mission = self.add_new_mission(
+                    entry_location,
+                    end_location,
+                    ensure_entry_location["model"],
+                    creator,
+                )
+                # print("start", ensure_entry_location["model"])
+                # print("end ", ensure_end_location)
+                return occupy_mission
+
+        return {"code": 0}
+
+    def add_new_mission(self, _entry_location, _end_location, sector, creator):
         area = QueryDB.MISIONS
         _collection = self.work_db[area]
-        # dt = datetime.now().strftime("%Y-%m-%d %H:%M")
-
+        n_mission = len(
+            list(
+                _collection.find(
+                    {
+                        "creatAT": {
+                            "$lt": datetime.now(),
+                            "$gt": datetime.now()
+                            - timedelta(hours=datetime.now().hour + 1),
+                        }
+                    }
+                )
+            )
+        )
+        # print("len", (n_mission))
         storage = {
             "mission_code": "MISSION-"
-            + mission_value["robot_code"]
+            + str((n_mission))
             + "-"
             + str(self.datetimes_st()),
-            "robot_code": mission_value["robot_code"],
-            "pickup_location": mission_value["pickup_location"],
-            "return_location": mission_value["return_location"],
-            "sector": self.find_sector(mission_value["pickup_location"]),
-            "current_state": "registered ",
+            # "robot_code": mission_value["robot_code"],
+            "entry_location": _entry_location["location_code"]
+            + "-"
+            + _entry_location["map_code"],
+            "end_location": _end_location["location_code"]
+            + "-"
+            + _end_location["map_code"],
+            "sector": sector,
+            "code": 1,
+            "mission_state": 1,
             "creator": creator,
-            "creatAT": self.datetimes_st(),
+            "creatAT": datetime.now(),
         }
         if self.import_db(_collection, storage):
             return self.json_payload(storage)
         return False
 
-    def histories_mission_request(self, _area, max_n):
+    def histories_mission_request(self, _area):
         _collection = self.work_db[_area]
-        _missions = _collection.find().limit(max_n)
+
+        # return self.json_payload(mx)
+        # _missions = _collection.find().limit(max_n)
+        _missions = _collection.find(
+            {
+                "creatAT": {
+                    "$lt": datetime.now(),
+                    "$gt": datetime.now() - timedelta(hours=datetime.now().hour + 1),
+                }
+            }
+        )
+        # haha = datetime.strptime(str(datetime.today()), "%Y-%m-%d").date()
+        # print("time now", str(datetime.now().day))
+        # print("today ", str(haha))
         response = []
         for mission in _missions:
-            mission.pop("_id", None)
+            # print("mission", mission)
+            # mission.pop("_id", None)
             response.append(mission)
-
-        return response
+        response.reverse()
+        return self.json_payload(response)
 
     def mission_histories_request(self):
         area = QueryDB.MISIONS
@@ -379,6 +572,9 @@ class MongoDB:
 
     def datetimes_st(self):
         return datetime.now().strftime("%m-%d-%H:%M:%S")
+
+    def datetimes_now(self):
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
 
     def get_database(self, args):
         return self.client[args]
