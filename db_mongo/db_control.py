@@ -9,7 +9,8 @@ from enum import Enum
 import json
 from re import sub
 import pydantic
-
+from copy import copy
+import random
 
 # from dns.rdatatype import NULL
 from pymongo import MongoClient
@@ -142,21 +143,31 @@ class MongoDB:
         # )
 
         # self.filled_data(QueryDB.PICKUP_LOCATION, "zone1", 7)
-        # for i in range(1, 7):
-        #     self.built_location(QueryDB.WAIT_LOCATION, i)
+        # for i in range(1, 49):
+        #     self.built_location(QueryDB.RETURN_LOCATION, i)
 
     def built_location(self, _area, n_location):
 
         # area = "pickup_locations"
         _collection = self.work_db[_area]
         document = {
-            "name": "vr" + str(n_location),
-            "line": n_location,
+            "name": "zone" + str(n_location),
+            # "line": [
+            #     random.randint(1, 49),
+            #     random.randint(1, 49),
+            #     random.randint(1, 49),
+            #     random.randint(1, 49),
+            # ],
+            "line": (n_location),
             "point": "LM1",
             "model": "",
             "kitting": True,
-            "location_status": 5,
+            "location_status": random.randint(4, 6),
+            "map_code": QueryDB.RETURN_LOCATION,
+            "location_priority": 2,
+            "lastAT": datetime.now(),
         }
+
         _collection.insert_one(document)
 
     def import_db(self, collection, data) -> None:
@@ -306,24 +317,54 @@ class MongoDB:
             response.append(self.json_payload(location))
         return response
 
+    def locations_find(self, _find_value, sort_value):
+        _collection = self.work_db[_find_value["map_code"]]
+        _locations = _collection.find(_find_value).sort(sort_value).limit(1)
+        # print("_locations", len(_locations))
+        # response = []
+        # # return True
+        # for location in _locations:
+        #     print("location", location)
+        #     # res = {
+        #     #     "name": location["name"],
+        #     #     "line": location["line"],
+        #     #     "point": location["point"],
+        #     #     "model": location["model"],
+        #     #     "kitting": location["kitting"],
+        #     # }
+        #     response.append(self.json_payload(location))
+        return self.json_payload(_locations)
+        return True
+
     def update_database(self, area, location, value, username):
         _collection = self.work_db[area]
-        status_list = {"username": username, "date": datetime.now()}
-        value.update({"status_list": status_list})
+
+        # "lastAT": datetime.now()
+
+        # status_list = {"username": username}
+        histories_update = dict(value)
+        histories_update.setdefault("username", username)
+        value.update(
+            {
+                "lastAT": datetime.now(),
+                "status_list": histories_update,
+            }
+        )
 
         value_update = {"$set": value}
+        # print("value_update", value_update)
         _update = _collection.find_one_and_update(
             location,
             value_update,
             upsert=False,
         )
-        # print(_update)
+
         if _update is None:
             return None
         return self.json_payload(_update)
         # if _update.raw_result["n"]:
         #     return True
-        # return False
+        return False
 
     def update_excute_mission(self, area, location, value, username):
         _collection = self.work_db[area]
