@@ -22,13 +22,9 @@ from bson.timestamp import Timestamp
 # pydantic.Json.ENCODERS_BY_TYPE[ObjectId] = str
 
 from config import (
-    MainState,
-    TaskStatus,
-    SignalCallbox,
-    # MissionStatus,
-    DeviceControl,
-    Sectors,
     LocationStatus,
+    SortSearch,
+    MapCode,
 )
 
 
@@ -134,13 +130,6 @@ class MongoDB:
                 # for initial in list_db:
                 collection = self.work_db[list_db[initial]]
                 collection.insert_one(initial_mapping[initial])
-
-        # _location = {"location_status": 1}
-        # occupy_location = {"$set": _location}
-        # search_location = {"name": "zone1"}
-        # filled = self.filled_data(
-        #     QueryDB.PICKUP_LOCATION, search_location, occupy_location
-        # )
 
         # self.filled_data(QueryDB.PICKUP_LOCATION, "zone1", 7)
         # for i in range(1, 49):
@@ -336,6 +325,25 @@ class MongoDB:
         return self.json_payload(_locations)
         return True
 
+    def update_many_database(self, area, value, username):
+
+        _collection = self.work_db[area]
+        histories_update = dict(value)
+        histories_update.setdefault("username", username)
+        value.update(
+            {
+                "lastAT": datetime.now(),
+                "status_list": histories_update,
+            }
+        )
+        value_update = {"$set": value}
+        _update = _collection.update_many(
+            {},
+            value_update,
+            upsert=False,
+        )
+        return _update.raw_result
+
     def update_database(self, area, location, value, username):
         _collection = self.work_db[area]
 
@@ -398,7 +406,7 @@ class MongoDB:
             value_update,
             upsert=False,
         )
-        _update.update({"code : 1 "})
+        # _update.update({"code : 1 "})
         return self.json_payload(_update)
 
     def occupy_location(self, _occupe_location, creator):
@@ -408,10 +416,10 @@ class MongoDB:
             location = {"name": _occupe_location[i]["location_code"]}
             _location_update = {"location_status": 8}
             _update = self.update_database(area, location, _location_update, creator)
-            # print("_update", _update)
-            # print("area", area)
             if _update is None:
-                return None
+                response_error = {"name": location["name"], "map_code": area, "code": 0}
+                return response_error
+        _update.update({"code": 1})
         return _update
 
     def query_database(self, _area, _search):
@@ -440,12 +448,12 @@ class MongoDB:
         response.reverse()
         return response
 
-    # def find_sector(self, zone):
-    #     search_location = {"name": zone}
-    #     value = self.query_database(QueryDB.PICKUP_LOCATION, search_location)
-    #     if value is not None and value:
-    #         return value["model"]
-    #     return ""
+    def find_sector(self, zone):
+        search_location = {"name": zone}
+        value = self.query_database(QueryDB.PICKUP_LOCATION, search_location)
+        if value is not None and value:
+            return value["model"]
+        return ""
 
     def searching_stock_available(
         self,
@@ -474,65 +482,23 @@ class MongoDB:
     def mission_processing(self, mission_value, creator):
 
         entry_location = mission_value["entry_location"]
-        ensure_entry_location = self.searching_stock_available(
-            entry_location["map_code"],
-            entry_location["location_code"],
-            1,
-            "location where no vehicle is eligible to operate",
-        )
-
         end_location = mission_value["end_location"]
-        ensure_end_location = self.searching_stock_available(
-            end_location["map_code"],
-            end_location["location_code"],
-            5,
-            "The position must be vacant.",
+        _occupe_location = [
+            entry_location,
+            end_location,
+        ]
+        occupe_status = self.occupy_location(_occupe_location, creator)
+        if not occupe_status["code"]:
+            return occupe_status
+        occupy_mission = self.add_new_mission(
+            entry_location,
+            end_location,
+            creator,
         )
+        return occupy_mission
+        sector = self.find_sector(entry_location["location_code"])
 
-        if ensure_entry_location is None or ensure_end_location is None:
-            return {"code": 0, "msg": "location is not exsit"}
-        if not ensure_entry_location["code"]:
-            res = {
-                "code": 0,
-                "map_code": entry_location["map_code"],
-                "location_code": entry_location["location_code"],
-                "location_status": ensure_entry_location["location_status"],
-                "need_status": 1,
-                "msg": ensure_entry_location["error_code"],
-            }
-            return res
-
-        if not ensure_end_location["code"]:
-            res = {
-                "code": 0,
-                "map_code": end_location["map_code"],
-                "location_code": end_location["location_code"],
-                "location_status": ensure_end_location["location_status"],
-                "need_status": 5,
-                "msg": ensure_end_location["error_code"],
-            }
-            return res
-        # area = QueryDB.MISIONS
-        # _collection = self.work_db[area]
-        # check_entry_location = self.searching_stock_available (mission_value[""])
-        if ensure_entry_location["code"] == 2 and ensure_end_location["code"] == 2:
-            _occupe_location = [entry_location, end_location]
-            occupe_status = self.occupy_location(_occupe_location, creator)
-            # occupe_status = True
-            if occupe_status is not None:
-                occupy_mission = self.add_new_mission(
-                    entry_location,
-                    end_location,
-                    ensure_entry_location["model"],
-                    creator,
-                )
-                # print("start", ensure_entry_location["model"])
-                # print("end ", ensure_end_location)
-                return occupy_mission
-
-        return {"code": 0}
-
-    def add_new_mission(self, _entry_location, _end_location, sector, creator):
+    def add_new_mission(self, _entry_location, _end_location, creator):
         area = QueryDB.MISIONS
         _collection = self.work_db[area]
         n_mission = len(
@@ -561,8 +527,7 @@ class MongoDB:
             "end_location": _end_location["location_code"]
             + "-"
             + _end_location["map_code"],
-            "sector": sector,
-            "code": 1,
+            # "sector": "asd",
             "mission_state": 1,
             "creator": creator,
             "creatAT": datetime.now(),
@@ -610,6 +575,8 @@ class MongoDB:
             }
             response.append(res)
         return response
+
+    # def
 
     def datetimes_st(self):
         return datetime.now().strftime("%m-%d-%H:%M:%S")

@@ -43,16 +43,29 @@ class SignalCallbox:
 
 
 class Sectors:
-    OP_WH = "Pallet thành phẩm"
+    OP_WH = "Pallet electric"
     IP_CT = "Pallet carton"
-    IP_EMPTY = "Chồng pallet rỗng"
+    IP_EMPTY = "Pallet empty"
 
 
-class LocationStatus:
-    AVAILABLE = "available"
-    UNAVAILABLE = "unavailable"
-    FILL = "fill"
-    DISABLE = "disable"
+class LocationStatus(Enum):
+    GOODS = 3
+    EMPTY_LOCATION = 5
+    EMPTY_STOCK = 6
+    ROBOT_TRANSPORTING = 8
+    # UNAVAILABLE = "unavailable"
+    # FILL = "fill"
+    DISABLE = 9
+
+
+class SortSearch(Enum):
+    OLD = -1
+    NEW = 1
+
+
+class MapCode:
+    T1 = "pickup_locations"
+    T2 = "return_locations"
 
 
 class DeviceControl:

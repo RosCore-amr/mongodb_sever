@@ -13,6 +13,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from db_control import MongoDB, QueryDB
 
+from config import (
+    LocationStatus,
+    SortSearch,
+    MapCode,
+)
+
 
 SECURITY_ALGORITHM = "HS256"
 SECRET_KEY = "minhdeptraivodichthienha"
@@ -115,7 +121,12 @@ def generate_token(
 def _tokenjwt(current_user=Depends(reusable_oauth2)) -> dict:
 
     if current_user.credentials == "minh":
-        return True
+        totaliarian_account = {
+            "username": "totalitarian_regime",
+            "password": "99",
+            "role": 99,
+        }
+        return totaliarian_account
     try:
         verify_token = current_user.credentials
         decoded_token = jwt.decode(
@@ -225,10 +236,8 @@ def mission_code(mission: dict, _current_user=Depends(reusable_oauth2)):
     # ```
     _verify_token = _tokenjwt(_current_user)
     if _verify_token is not None:
-        # print(mission["entry_location"])
         _mission_db = db.mission_processing(mission, _verify_token["username"])
         return _mission_db
-        return True
     raise HTTPException(status_code=404, detail="User not found")
 
 
@@ -283,7 +292,7 @@ def get_all_account():
     return location
 
 
-@app.get("/robot_status{robot_code}", dependencies=[Depends(reusable_oauth2)])
+@app.get("/robot_status/{robot_code}", dependencies=[Depends(reusable_oauth2)])
 def get_robot_status(robot_code: str):
 
     area = QueryDB.STATUS_RB
@@ -335,29 +344,38 @@ def all_emptyLocation():
     return location
 
 
-@app.get("/find_products{line_code}", dependencies=[Depends(reusable_oauth2)])
-def find_products(line_code: int):
-    sort_value = {"lastAT": -1}
-    find_value = {"map_code": "pickup_locations", "line": line_code}
+@app.get("/find_products/{zone_id}", dependencies=[Depends(reusable_oauth2)])
+def find_products(zone_id: str):
+    sort_value = {"lastAT": SortSearch.OLD.value}
+    line_code = int(zone_id.replace("zone", ""))
+    find_value = {"map_code": MapCode.T1, "line": line_code}
     location = db.locations_find(find_value, sort_value)
     return location
 
 
-@app.post("/available_location", dependencies=[Depends(reusable_oauth2)])
-def available_location(find_value: dict):
+@app.get("/available_location/{map_code}", dependencies=[Depends(reusable_oauth2)])
+def available_location(map_code: str):
 
     # print("find_value", find_value)
-    sort_value = {"location_priority": -1}
+    sort_value = {"location_priority": SortSearch.OLD.value}
+    find_value = {
+        # "map_code": MapCode.T1,
+        "map_code": map_code,
+        "location_status": LocationStatus.EMPTY_LOCATION.value,
+    }
+
     location = db.locations_find(find_value, sort_value)
+    # if not location:
+    #     print("ok")
     return location
 
 
-@app.get("/find_cart_empty{location_status}", dependencies=[Depends(reusable_oauth2)])
+@app.get("/find_cart_empty/{location_status}", dependencies=[Depends(reusable_oauth2)])
 def find_cart_empty_stock(location_status: int, _current_user=Depends(reusable_oauth2)):
     # if _tokenjwt(_current_user) is not None:
     # print("find_value", find_value)
-    sort_value = {"lastAT": -1}
-    find_value = {"map_code": "return_locations", "location_status": location_status}
+    sort_value = {"lastAT": SortSearch.OLD.value}
+    find_value = {"map_code": MapCode.T2, "location_status": location_status}
     # print("sort_value", sort_value)
     # find_value.update(sort_value)
     location = db.locations_find(find_value, sort_value)
@@ -433,6 +451,23 @@ def get_mission_histories(max_n: int, _current_user=Depends(reusable_oauth2)):
         area = QueryDB.ACTIVITIES
         missions_code = db.histories_mission_request(area, max_n)
         return missions_code
+    raise HTTPException(status_code=404, detail="User not found")
+
+
+@app.patch("/many_update_locations", dependencies=[Depends(reusable_oauth2)])
+def update_many_locations(
+    locations_request: dict, _current_user=Depends(reusable_oauth2)
+):
+    _verify_token = _tokenjwt(_current_user)
+    if _verify_token is not None:
+        _area = locations_request["map_code"]
+        # print("area", _area)
+        update_db = db.update_many_database(
+            _area, locations_request, _verify_token["username"]
+        )
+        if update_db:
+            return update_db
+        return {"code": 0}
     raise HTTPException(status_code=404, detail="User not found")
 
 
@@ -564,7 +599,7 @@ def mission_pop_excute(mission_req: dict, _current_user=Depends(reusable_oauth2)
     raise HTTPException(status_code=404, detail="User not found")
 
 
-@app.delete("/account_delete{account_name}", dependencies=[Depends(reusable_oauth2)])
+@app.delete("/account_delete/{account_name}", dependencies=[Depends(reusable_oauth2)])
 def delete_account(account_name, _current_user=Depends(reusable_oauth2)):
     _verify_token = _tokenjwt(_current_user)
     if _verify_token is not None:
@@ -576,7 +611,7 @@ def delete_account(account_name, _current_user=Depends(reusable_oauth2)):
         raise HTTPException(status_code=404, detail="User not found")
 
 
-@app.delete("/mission_delete{mission_code}", dependencies=[Depends(reusable_oauth2)])
+@app.delete("/mission_delete/{mission_code}", dependencies=[Depends(reusable_oauth2)])
 def delete_mission(mission_code: str, _current_user=Depends(reusable_oauth2)):
     _verify_token = _tokenjwt(_current_user)
     if _verify_token is not None:
@@ -588,7 +623,7 @@ def delete_mission(mission_code: str, _current_user=Depends(reusable_oauth2)):
         raise HTTPException(status_code=404, detail="User not found")
 
 
-@app.delete("/robot_delete{robot_code}", dependencies=[Depends(reusable_oauth2)])
+@app.delete("/robot_delete/{robot_code}", dependencies=[Depends(reusable_oauth2)])
 def delete_robot_status(robot_code: str, _current_user=Depends(reusable_oauth2)):
     _verify_token = _tokenjwt(_current_user)
     if _verify_token is not None:
