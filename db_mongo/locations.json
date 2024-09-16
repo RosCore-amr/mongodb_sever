@@ -1,6 +1,5 @@
-{   "name": "zone1",
-    "line": "amr_kitting",
-    "point": "LM1",
-    "model": "",
-    "location_status": 5
+{
+    "name": "vt2",
+    "map_code" : "pickup_locations",
+    "location_status": 6
 }

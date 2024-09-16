@@ -71,7 +71,7 @@ class MongoDB:
             QueryDB.STATUS_RB,
             QueryDB.PICKUP_LOCATION,
             QueryDB.RETURN_LOCATION,
-            QueryDB.WAIT_LOCATION,
+            # QueryDB.WAIT_LOCATION,
             QueryDB.MISIONS,
             QueryDB.ACCOUNT,
             QueryDB.ACTIVITIES,
@@ -132,15 +132,15 @@ class MongoDB:
                 collection.insert_one(initial_mapping[initial])
 
         # self.filled_data(QueryDB.PICKUP_LOCATION, "zone1", 7)
-        # for i in range(1, 49):
-        #     self.built_location(QueryDB.RETURN_LOCATION, i)
+        # for i in range(1, 7):
+        #     self.built_location(QueryDB.PICKUP_LOCATION, i)
 
     def built_location(self, _area, n_location):
 
         # area = "pickup_locations"
         _collection = self.work_db[_area]
         document = {
-            "name": "zone" + str(n_location),
+            "name": "vt" + str(n_location),
             # "line": [
             #     random.randint(1, 49),
             #     random.randint(1, 49),
@@ -151,9 +151,9 @@ class MongoDB:
             "point": "LM1",
             "model": "",
             "kitting": True,
-            "location_status": random.randint(4, 6),
-            "map_code": QueryDB.RETURN_LOCATION,
-            "location_priority": 2,
+            "location_status": 6,
+            "map_code": QueryDB.PICKUP_LOCATION,
+            "location_priority": 4,
             "lastAT": datetime.now(),
         }
 
@@ -291,9 +291,9 @@ class MongoDB:
             response.append(self.json_payload(amr))
         return response
 
-    def locations_request(self, _area):
+    def locations_request(self, _area, _find_value):
         _collection = self.work_db[_area]
-        _locations = _collection.find()
+        _locations = _collection.find(_find_value)
         response = []
         for location in _locations:
             # res = {
@@ -389,21 +389,36 @@ class MongoDB:
 
     def pop_excute_mission(self, area, location, username):
         _collection = self.work_db[area]
-        # value_update = {"$push": {"mission_excute": value}}
         value_pop = {"$pop": {"mission_excute": -1}}
         _find = _collection.find_one_and_update(
             location,
             value_pop,
         )
-        if len(_find["mission_excute"]) == 0:
-            return {"code": 0, "msg": "khong co nhiem vu trong nao ca "}
-        # print("fu", _find["mission_excute"])
-        body_update = {"mission_next": _find["mission_excute"][0]}
+        if len(_find["mission_excute"]) != 0:
+            _mission_next = {"mission_next": _find["mission_excute"][0]}
+        else:
+            _mission_next = {"mission_next": ""}
 
-        value_update = {"$set": body_update}
+        if _find["mission_next"] is None:
+            return {"code": 0, "msg": "khong co nhiem vu trong nao ca "}
+
+        # body_update = {
+        #     "mission_next": _find["mission_excute"][0],
+        #     # "mission_wait": list(_find["mission_wait"]).append(_find["mission_next"]),
+        # }
+        value_update_mission_wait = {
+            "$push": {"mission_wait": _find["mission_next"]},
+            "$set": _mission_next,
+        }
+
+        # print("_find mission_next", _find["mission_next"])
+        # print("_find mission_wait", (_find["mission_wait"].append("studentId")))
+
+        # value_update = {"$set": body_update}
         _update = _collection.find_one_and_update(
             location,
-            value_update,
+            value_update_mission_wait,
+            # value_update_mission_wait,
             upsert=False,
         )
         # _update.update({"code : 1 "})
@@ -479,6 +494,15 @@ class MongoDB:
         _query.update({"code": 1})
         return _query
 
+    def remove_task_pending(self, _area, _search, value):
+        _collection = self.work_db[_area]
+        value_update = {"$pull": {"mission_wait": value["mission_code"]}}
+        _query = _collection.update_one(_search, value_update)
+        # print("value ", value["mission_code"])
+        # _update.raw_result["n"]:
+        # print("_query ", _query.raw_result["nModified"])
+        return {"code": _query.raw_result["nModified"]}
+
     def mission_processing(self, mission_value, creator):
 
         entry_location = mission_value["entry_location"]
@@ -529,6 +553,7 @@ class MongoDB:
             + _end_location["map_code"],
             # "sector": "asd",
             "mission_state": 1,
+            "code": 1,
             "creator": creator,
             "creatAT": datetime.now(),
         }

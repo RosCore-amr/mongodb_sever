@@ -1,0 +1,70 @@
+
+
+{
+    "_id": {
+      "$oid": "66ddcc93f5ebc2fc1570a811"
+    },
+    "mission_excute": [],
+    "mission_type": 42,
+    "mission_next": "",
+    "excute_code": "transport_goods",
+    "mission_wait": [
+      "ssssss",
+      "MISSION-0-09-15-00:21:14",
+      "MISSION-0-09-15-00:21:14",
+      "MISSION-0-09-15-00:21:14",
+      "MISSION-0-09-15-00:21:14",
+      "MISSION-1-09-15-00:31:54",
+      "MISSION-2-09-15-00:50:51",
+      "MISSION-3-09-15-00:50:55",
+      "MISSION-4-09-15-00:50:55",
+      "MISSION-5-09-15-00:51:10",
+      "MISSION-6-09-15-00:51:15",
+      "MISSION-6-09-15-00:51:15",
+      "MISSION-9-09-15-01:07:28",
+      "MISSION-10-09-15-01:07:35",
+      "MISSION-11-09-15-01:08:51"
+    ]
+  }
+  {
+    "_id": {
+      "$oid": "66e0110e06cb764782a411a7"
+    },
+    "name": "zone1",
+    "line": [
+      24,
+      48,
+      20,
+      24
+    ],
+    "point": "LM1",
+    "model": "",
+    "kitting": true,
+    "location_status": 8,
+    "map_code": "pickup_locations",
+    "location_priority": 2,
+    "lastAT": {
+      "$date": "2024-09-13T19:07:28.428Z"
+    },
+    "status_list": {
+      "location_status": 8,
+      "username": "admin"
+    }
+  }
+  {
+    "_id": {
+      "$oid": "66d7cbd4a65d30565d37b16d"
+    },
+    "robot_code": "robot_2",
+    "robot_type": "agv",
+    "ip": "192.168.2.2",
+    "battery": 88,
+    "lastUpdate": {
+      "date": {
+        "$date": "2024-09-15T11:19:09.026Z"
+      }
+    },
+    "mission": "",
+    "status": 0,
+    "type": "amr"
+  }
