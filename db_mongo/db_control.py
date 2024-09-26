@@ -71,11 +71,11 @@ class MongoDB:
             QueryDB.STATUS_RB,
             QueryDB.PICKUP_LOCATION,
             QueryDB.RETURN_LOCATION,
-            # QueryDB.WAIT_LOCATION,
+            # QueryDB.EXCUTE_MISSION,
             QueryDB.MISIONS,
             QueryDB.ACCOUNT,
             QueryDB.ACTIVITIES,
-            # QueryDB.ROLE,
+            QueryDB.EXCUTE_MISSION,
         ]
 
         value_account = {
@@ -113,6 +113,13 @@ class MongoDB:
             "msg": "test_initial",
             "date": "08-28-09:21:20",
         }
+        excute_mission = {
+            "excute_code": "transport_empty_cart",
+            "mission_wait": [],
+            # "mission_next": "",
+            "mission_excute": [],
+            "mission_type": 46,
+        }
         initial_mapping = [
             value_robot_status,
             value_location,
@@ -121,6 +128,7 @@ class MongoDB:
             value_mission,
             value_account,
             robot_activity,
+            excute_mission,
         ]
 
         database_name = self.client.list_database_names()
@@ -132,15 +140,15 @@ class MongoDB:
                 collection.insert_one(initial_mapping[initial])
 
         # self.filled_data(QueryDB.PICKUP_LOCATION, "zone1", 7)
-        # for i in range(1, 7):
-        #     self.built_location(QueryDB.PICKUP_LOCATION, i)
+        # for i in range(1, 49):
+        #     self.built_location(QueryDB.RETURN_LOCATION, i)
 
     def built_location(self, _area, n_location):
 
         # area = "pickup_locations"
         _collection = self.work_db[_area]
         document = {
-            "name": "vt" + str(n_location),
+            "name": "zone" + str(n_location),
             # "line": [
             #     random.randint(1, 49),
             #     random.randint(1, 49),
@@ -148,12 +156,12 @@ class MongoDB:
             #     random.randint(1, 49),
             # ],
             "line": (n_location),
-            "point": "LM1",
+            "point": "LM" + str(n_location),
             "model": "",
             "kitting": True,
             "location_status": 6,
-            "map_code": QueryDB.PICKUP_LOCATION,
-            "location_priority": 4,
+            "map_code": QueryDB.RETURN_LOCATION,
+            "location_priority": 1,
             "lastAT": datetime.now(),
         }
 
@@ -344,6 +352,48 @@ class MongoDB:
         )
         return _update.raw_result
 
+    def location_update_database(self, area, location, value, username):
+        _collection = self.work_db[area]
+
+        # "lastAT": datetime.now()
+        _find = _collection.find_one(
+            location,
+            # value_update,
+            # upsert=False,
+        )
+        # print("value_update", _find["name"])
+        history_before_update = {
+            "line": _find["line"],
+            "point": _find["point"],
+            "model": _find["model"],
+            "location_status": _find["location_status"],
+            "location_priority": _find["location_priority"],
+        }
+
+        # status_list = {"username": username}
+        histories_update = dict(value)
+        histories_update.setdefault("username", username)
+        value.update(
+            {
+                "lastAT": datetime.now(),
+                "status_list": histories_update,
+                "status_before_change": history_before_update,
+            }
+        )
+
+        value_update = {"$set": value}
+        # print("value_update", value_update)
+        _update = _collection.find_one_and_update(
+            location,
+            value_update,
+            upsert=False,
+        )
+        # print("value_update", value_update)
+
+        if _update is None:
+            return None
+        return self.json_payload(_update)
+
     def update_database(self, area, location, value, username):
         _collection = self.work_db[area]
 
@@ -394,12 +444,12 @@ class MongoDB:
             location,
             value_pop,
         )
-        if len(_find["mission_excute"]) != 0:
-            _mission_next = {"mission_next": _find["mission_excute"][0]}
-        else:
-            _mission_next = {"mission_next": ""}
+        # if len(_find["mission_excute"]) != 0:
+        #     _mission_next = {"mission_next": _find["mission_excute"][0]}
+        # else:
+        #     _mission_next = {"mission_next": ""}
 
-        if _find["mission_next"] is None:
+        if len(_find["mission_excute"]) == 0:
             return {"code": 0, "msg": "khong co nhiem vu trong nao ca "}
 
         # body_update = {
@@ -407,8 +457,8 @@ class MongoDB:
         #     # "mission_wait": list(_find["mission_wait"]).append(_find["mission_next"]),
         # }
         value_update_mission_wait = {
-            "$push": {"mission_wait": _find["mission_next"]},
-            "$set": _mission_next,
+            "$push": {"mission_wait": _find["mission_excute"][0]},
+            # "$set": _mission_next,
         }
 
         # print("_find mission_next", _find["mission_next"])
@@ -561,29 +611,40 @@ class MongoDB:
             return self.json_payload(storage)
         return False
 
-    def histories_mission_request(self, _area):
+    def user_query_information_mission(self, _area, sort_value, user_namne):
+        _collection = self.work_db[_area]
+
+        # return self.json_payload(mx)
+        # _missions = _collection.find().limit(max_n)
+        search = {"creator": user_namne}
+        _missions = _collection.find(
+            search
+            # {
+            #     "creatAT": {
+            #         "$lt": datetime.now(),
+            #         "$gt": datetime.now() - timedelta(hours=datetime.now().hour + 1),
+            #     }
+            # }
+        ).sort(sort_value)
+        # if
+
+        return self.json_payload(_missions)
+
+    def histories_mission_request(self, _area, sort_value):
         _collection = self.work_db[_area]
 
         # return self.json_payload(mx)
         # _missions = _collection.find().limit(max_n)
         _missions = _collection.find(
-            {
-                "creatAT": {
-                    "$lt": datetime.now(),
-                    "$gt": datetime.now() - timedelta(hours=datetime.now().hour + 1),
-                }
-            }
-        )
-        # haha = datetime.strptime(str(datetime.today()), "%Y-%m-%d").date()
-        # print("time now", str(datetime.now().day))
-        # print("today ", str(haha))
-        response = []
-        for mission in _missions:
-            # print("mission", mission)
-            # mission.pop("_id", None)
-            response.append(mission)
-        response.reverse()
-        return self.json_payload(response)
+            # {
+            #     "creatAT": {
+            #         "$lt": datetime.now(),
+            #         "$gt": datetime.now() - timedelta(hours=datetime.now().hour + 1),
+            #     }
+            # }
+        ).sort(sort_value)
+
+        return self.json_payload(_missions)
 
     def mission_histories_request(self):
         area = QueryDB.MISIONS
@@ -620,9 +681,6 @@ class MongoDB:
         return _convert_json
 
         # return data
-
-    # def bson2Json(self, data):
-    #     return dumps(data, indent=4, sort_keys=True)
 
 
 MongoDB()

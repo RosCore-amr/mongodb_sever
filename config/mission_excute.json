@@ -1,7 +1,13 @@
 {
     "excute_code" :"transport_empty_cart",
     "mission_wait" : [], 
-    "mission_next" : "",
     "mission_excute" : [],
     "mission_type" : 46
+}
+
+{
+    "excute_code" :"transport_goods",
+    "mission_wait" : [], 
+    "mission_excute" : [],
+    "mission_type" : 42
 } 

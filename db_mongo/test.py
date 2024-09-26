@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from mongdb_control import MongoDB
+# from mongdb_control import MongoDB
 
 
 def parse_opts():
