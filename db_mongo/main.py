@@ -347,7 +347,11 @@ def all_emptyLocation():
 def find_products(zone_id: str):
     sort_value = {"lastAT": SortSearch.OLD.value}
     line_code = int(zone_id.replace("zone", ""))
-    find_value = {"map_code": MapCode.T1, "line": line_code}
+    find_value = {
+        "map_code": MapCode.T1,
+        "line": line_code,
+        "location_status": LocationStatus.GOODS.value,
+    }
     location = db.locations_find(find_value, sort_value)
     return location
 
@@ -414,10 +418,13 @@ def get_return(zone_id: str):
     return location
 
 
-@app.get("/query_empty/{vt_id}", dependencies=[Depends(reusable_oauth2)])
-def get_empty(vt_id: str):
-    area = QueryDB.PICKUP_LOCATION
-    _search = {"name": vt_id}
+@app.get(
+    "/query_location/{map_code}/{zone_id}", dependencies=[Depends(reusable_oauth2)]
+)
+def get_location(zone_id: str, map_code: str):
+    area = map_code
+    # area = _location_update["map_code"]
+    _search = {"name": zone_id}
     location = db.query_database(area, _search)
     return location
 

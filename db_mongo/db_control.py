@@ -317,7 +317,11 @@ class MongoDB:
     def locations_find(self, _find_value, sort_value):
         _collection = self.work_db[_find_value["map_code"]]
         _locations = _collection.find(_find_value).sort(sort_value).limit(1)
-        # print("_locations", len(_locations))
+
+        for location in _locations:
+            # print("location", i)
+            return self.json_payload(location)
+
         # response = []
         # # return True
         # for location in _locations:
@@ -565,14 +569,15 @@ class MongoDB:
         if not occupe_status["code"]:
             return occupe_status
         occupy_mission = self.add_new_mission(
-            entry_location,
-            end_location,
+            # entry_location,
+            # end_location,
+            mission_value,
             creator,
         )
         return occupy_mission
         sector = self.find_sector(entry_location["location_code"])
 
-    def add_new_mission(self, _entry_location, _end_location, creator):
+    def add_new_mission(self, _destination_mission, creator):
         area = QueryDB.MISIONS
         _collection = self.work_db[area]
         n_mission = len(
@@ -595,12 +600,13 @@ class MongoDB:
             + "-"
             + str(self.datetimes_st()),
             # "robot_code": mission_value["robot_code"],
-            "entry_location": _entry_location["location_code"]
-            + "-"
-            + _entry_location["map_code"],
-            "end_location": _end_location["location_code"]
-            + "-"
-            + _end_location["map_code"],
+            "destination": _destination_mission,
+            # "entry_location": _entry_location["location_code"]
+            # + "-"
+            # + _entry_location["map_code"],
+            # "end_location": _end_location["location_code"]
+            # + "-"
+            # + _end_location["map_code"],
             # "sector": "asd",
             "mission_state": 1,
             "code": 1,
