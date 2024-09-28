@@ -120,7 +120,7 @@ def generate_token(
 
 def _tokenjwt(current_user=Depends(reusable_oauth2)) -> dict:
 
-    if current_user.credentials == "minh":
+    if current_user.credentials == "minh" or current_user.credentials == "trung":
         totaliarian_account = {
             "username": "totalitarian_regime",
             "password": "99",
@@ -241,6 +241,20 @@ def mission_code(mission: dict, _current_user=Depends(reusable_oauth2)):
     raise HTTPException(status_code=404, detail="User not found")
 
 
+@app.post("/cancel_mission", dependencies=[Depends(reusable_oauth2)])
+def cancel_mission(mission_code: str, _current_user=Depends(reusable_oauth2)):
+
+    _verify_token = _tokenjwt(_current_user)
+    if _verify_token is not None:
+        _area = QueryDB.MISIONS
+        _search = {"mission_code": mission_code}
+        _mission_cancel = db.mission_cancel_process(
+            _area, _search, _verify_token["username"]
+        )
+        return _mission_cancel
+    raise HTTPException(status_code=404, detail="User not found")
+
+
 @app.post("/add_new_robot", dependencies=[Depends(reusable_oauth2)])
 def robot_code(
     _robot_information: RobotInformations, _current_user=Depends(reusable_oauth2)
@@ -278,6 +292,18 @@ def search_location_stock(request_data: dict, _current_user=Depends(reusable_oau
         permission_task = request_data["occupy_code"]
         stoken_value = db.searching_stock_available(location_search, permission_task)
         return stoken_value
+    raise HTTPException(status_code=404, detail="User not found")
+
+
+@app.post("/creat_model/{model_name}", dependencies=[Depends(reusable_oauth2)])
+def mission_code(model_name: str, _current_user=Depends(reusable_oauth2)):
+
+    _verify_token = _tokenjwt(_current_user)
+    if _verify_token is not None:
+        area = QueryDB.MODEL
+        data_creat = {"model": model_name}
+        creat_db = db.creat_data(area, data_creat)
+        return creat_db
     raise HTTPException(status_code=404, detail="User not found")
 
 
@@ -334,13 +360,13 @@ def all_returnLocation():
     return location
 
 
-@app.get("/all_empty", dependencies=[Depends(reusable_oauth2)])
-def all_emptyLocation():
-    area = QueryDB.PICKUP_LOCATION
-    _location_value = {"name": {"$regex": "^vt"}}
+# @app.get("/all_empty", dependencies=[Depends(reusable_oauth2)])
+# def all_emptyLocation():
+#     area = QueryDB.PICKUP_LOCATION
+#     _location_value = {"name": {"$regex": "^vt"}}
 
-    location = db.locations_request(area, _location_value)
-    return location
+#     location = db.locations_request(area, _location_value)
+#     return location
 
 
 @app.get("/find_products/{zone_id}", dependencies=[Depends(reusable_oauth2)])
@@ -418,6 +444,15 @@ def get_return(zone_id: str):
     return location
 
 
+@app.get("/query_model/{mode_id}", dependencies=[Depends(reusable_oauth2)])
+def get_return(mode_id: str):
+    area = QueryDB.MODEL
+    _search = {"model": mode_id}
+    location = db.query_database(area, _search)
+    # return True
+    return location
+
+
 @app.get(
     "/query_location/{map_code}/{zone_id}", dependencies=[Depends(reusable_oauth2)]
 )
@@ -449,6 +484,16 @@ def mission_history(_current_user=Depends(reusable_oauth2)):
         sort_value = {"creatAT": SortSearch.OLD.value}
         missions_code = db.histories_mission_request(area, sort_value)
         return missions_code
+    raise HTTPException(status_code=404, detail="User not found")
+
+
+@app.get("/model_product", dependencies=[Depends(reusable_oauth2)])
+def model_product(_current_user=Depends(reusable_oauth2)):
+    if _tokenjwt(_current_user) is not None:
+        area = QueryDB.MODEL
+        _value_search = {}
+        location = db.locations_request(area, _value_search)
+        return location
     raise HTTPException(status_code=404, detail="User not found")
 
 
@@ -532,6 +577,21 @@ def decentralization(
     raise HTTPException(status_code=404, detail="User not found")
 
 
+@app.patch("/restore_location", dependencies=[Depends(reusable_oauth2)])
+def restore_location(_location_update: dict, _current_user=Depends(reusable_oauth2)):
+
+    _verify_token = _tokenjwt(_current_user)
+    if _verify_token is not None:
+        _area = _location_update["map_code"]
+        location = {"name": _location_update["name"]}
+        # print("_location_update", _location_update)
+        _update_db = db.restore_data(_area, location, _verify_token["username"])
+        if _update_db:
+            return _update_db
+        return {"code": 0}
+    raise HTTPException(status_code=404, detail="User not found")
+
+
 @app.patch("/update_pickup_location", dependencies=[Depends(reusable_oauth2)])
 def update_pickup(_location_update: dict, _current_user=Depends(reusable_oauth2)):
 
@@ -540,7 +600,7 @@ def update_pickup(_location_update: dict, _current_user=Depends(reusable_oauth2)
         _area = QueryDB.PICKUP_LOCATION
         location = {"name": _location_update["name"]}
         # print("_location_update", _location_update)
-        _update_db = db.update_database(
+        _update_db = db.location_update_database(
             _area, location, _location_update, _verify_token["username"]
         )
         if _update_db:
@@ -556,28 +616,13 @@ def update_return(_location_update: dict, _current_user=Depends(reusable_oauth2)
         _area = QueryDB.RETURN_LOCATION
         location = {"name": _location_update["name"]}
         # print("_location_update", _location_update)
-        _update_db = db.update_database(
+        _update_db = db.location_update_database(
             _area, location, _location_update, _verify_token["username"]
         )
         if _update_db:
             return _update_db
         return {"code": 0}
     raise HTTPException(status_code=404, detail="User not found")
-
-
-# @app.patch("/update_empty_location", dependencies=[Depends(reusable_oauth2)])
-# def update_empty(_location_update: dict, _current_user=Depends(reusable_oauth2)):
-#     _verify_token = _tokenjwt(_current_user)
-#     if _verify_token is not None:
-#         _area = QueryDB.PICKUP_LOCATION
-#         location = {"name": _location_update["name"]}
-#         _update_db = db.update_database(
-#             _area, location, _location_update, _verify_token["username"]
-#         )
-#         if _update_db:
-#             return _update_db
-#         return {"code": 0}
-#     raise HTTPException(status_code=404, detail="User not found")
 
 
 @app.patch("/update_location", dependencies=[Depends(reusable_oauth2)])
@@ -600,6 +645,41 @@ def update_location(_location_update: dict, _current_user=Depends(reusable_oauth
         return {"code": 0}
         # return True
     raise HTTPException(status_code=404, detail="User not found")
+
+
+@app.patch("/location_clear_not_sector", dependencies=[Depends(reusable_oauth2)])
+def location_clear_not_sector(
+    _location_update: dict, _current_user=Depends(reusable_oauth2)
+):
+    _verify_token = _tokenjwt(_current_user)
+    if _verify_token is not None:
+        _area = _location_update["map_code"]
+        if _area == "pickup_locations":
+            value_clear = {"model": "", "line": []}
+        elif _area == "return_locations":
+            value_clear = {"model": ""}
+        location = {"location_status": {"$ne": 3}}
+        # print("_location_update", _location_update)
+        _update_db = db.update_location_clear_sector(_area, value_clear)
+        if _update_db:
+            return _update_db
+        return {"code": 0}
+    raise HTTPException(status_code=404, detail="User not found")
+
+
+# @app.patch("/update_empty_location", dependencies=[Depends(reusable_oauth2)])
+# def update_empty(_location_update: dict, _current_user=Depends(reusable_oauth2)):
+#     _verify_token = _tokenjwt(_current_user)
+#     if _verify_token is not None:
+#         _area = QueryDB.PICKUP_LOCATION
+#         location = {"name": _location_update["name"]}
+#         _update_db = db.update_database(
+#             _area, location, _location_update, _verify_token["username"]
+#         )
+#         if _update_db:
+#             return _update_db
+#         return {"code": 0}
+#     raise HTTPException(status_code=404, detail="User not found")
 
 
 @app.patch("/update_missions_histories", dependencies=[Depends(reusable_oauth2)])
@@ -656,6 +736,18 @@ def mission_pop_excute(mission_req: dict, _current_user=Depends(reusable_oauth2)
         return _update_db
         # return {"code": 0}
     raise HTTPException(status_code=404, detail="User not found")
+
+
+@app.delete("/model_delete/{model_name}", dependencies=[Depends(reusable_oauth2)])
+def model_delete(model_name, _current_user=Depends(reusable_oauth2)):
+    _verify_token = _tokenjwt(_current_user)
+    if _verify_token is not None:
+        area = QueryDB.MODEL
+        data_query = {"model": str(model_name)}
+        _delete_db = db.delete_db(area, data_query)
+        return _delete_db
+    else:
+        raise HTTPException(status_code=404, detail="User not found")
 
 
 @app.delete("/account_delete/{account_name}", dependencies=[Depends(reusable_oauth2)])

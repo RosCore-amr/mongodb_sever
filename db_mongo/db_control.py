@@ -52,6 +52,7 @@ class QueryDB:
     ROLE = "roles"
     ACTIVITIES = "robot_activites"
     EXCUTE_MISSION = "mission_excute"
+    MODEL = "model"
 
 
 @dataclass
@@ -159,11 +160,14 @@ class MongoDB:
             "point": "LM" + str(n_location),
             "model": "",
             "kitting": True,
-            "location_status": 6,
-            "map_code": QueryDB.RETURN_LOCATION,
+            "location_status": 3,
+            "map_code": _area,
             "location_priority": 1,
+            "status_before_change": {"name": "zone" + str(n_location)},
+            "restore": True,
             "lastAT": datetime.now(),
         }
+        # document = {"model": str("model_number_" + str(n_location))}
 
         _collection.insert_one(document)
 
@@ -209,6 +213,15 @@ class MongoDB:
         else:
             self.import_db(_collection, comtemplate)
             return "creat success acoount "
+
+    def creat_data(self, _area, data):
+        _collection = self.work_db[_area]
+        # comtemplate.update({"lastUpdate": {"date": datetime.now()}})
+        find_data = _collection.find_one(data)
+        if find_data is None:
+            self.import_db(_collection, data)
+            # print("Nonetype")
+        return find_data
 
     def robot_operating(self, msg):
         area = QueryDB.ACTIVITIES
@@ -380,6 +393,7 @@ class MongoDB:
         value.update(
             {
                 "lastAT": datetime.now(),
+                "restore": True,
                 "status_list": histories_update,
                 "status_before_change": history_before_update,
             }
@@ -440,6 +454,29 @@ class MongoDB:
         )
         # print(_update)
         return self.json_payload(_update)
+
+    def update_location_clear_sector(self, area, value_clear):
+        _collection = self.work_db[area]
+
+        newvalues = {"$set": value_clear}
+        location = {"location_status": {"$ne": 3}}
+
+        x = _collection.update_many(location, newvalues)
+        # location_update_database(
+        #             _area, location, _location_update, _verify_token["username"]
+        #         )
+        # print("_locations", (_locations))
+        # list_result = []
+        # for location in _locations:
+        #     location = {"name": location["name"]}
+        #     _update = self.location_update_database(
+        #         area, location, value_clear, username
+        #     )
+        #     list_result.append(_update)
+        # print("area", area)
+        # print("location", x)
+        return True
+        return list_result
 
     def pop_excute_mission(self, area, location, username):
         _collection = self.work_db[area]
@@ -557,6 +594,22 @@ class MongoDB:
         # print("_query ", _query.raw_result["nModified"])
         return {"code": _query.raw_result["nModified"]}
 
+    def mission_cancel_process(self, _area, _search, username):
+        # print("mission_code", _search)
+        _mission_update = {"mission_state": 9}
+        cancel_mission = self.update_database(_area, _search, _mission_update, username)
+        if cancel_mission is None:
+            return {"code": 0, "msg": "dont have mission like that "}
+        restore_location = cancel_mission["destination"]
+        # restore_data(self, _area, _value, username):
+        # _area = _location_update["map_code"]
+        # location = {"name": _location_update["name"]}
+
+        for key, location in restore_location.items():
+            _location = {"name": location["location_code"]}
+            self.restore_data(location["map_code"], _location, username)
+        return cancel_mission
+
     def mission_processing(self, mission_value, creator):
 
         entry_location = mission_value["entry_location"]
@@ -616,6 +669,17 @@ class MongoDB:
         if self.import_db(_collection, storage):
             return self.json_payload(storage)
         return False
+
+    def restore_data(self, _area, _value, username):
+        _collection = self.work_db[_area]
+        value_restore = _collection.find_one(_value)["status_before_change"]
+        trigger_restore = {"restore": False}
+        value_restore.update(trigger_restore)
+        # print("value_restore", value_restore)
+        _restore_value = self.update_database(_area, _value, value_restore, username)
+
+        # return True
+        return self.json_payload(_restore_value)
 
     def user_query_information_mission(self, _area, sort_value, user_namne):
         _collection = self.work_db[_area]
