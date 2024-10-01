@@ -16,14 +16,14 @@ class MainState(Enum):
     FINISH = 10
 
 
-class TaskStatus:
-    EXCEPTION = "0"
-    CREATE = "1"
-    EXECUTING = "2"
-    SENDING = "3"
-    CANCEL = "4"
-    RESENDING = "6"
-    COMPLETE = "9"
+class TaskStatus(Enum):
+    EXCEPTION = 0
+    CREATE = 1
+    EXECUTING = 2
+    SENDING = 3
+    CANCEL = 9
+    RESENDING = 6
+    COMPLETE = 11
 
 
 class SignalCallbox:

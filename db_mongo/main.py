@@ -72,10 +72,10 @@ class RobotActivities(BaseModel):
     # return_location: str
 
 
-class RobotInformations(BaseModel):
+class RobotCreat(BaseModel):
     robot_code: str
     robot_type: str
-    ip: str
+    ip_machine: str
 
 
 class ExcuteMission(BaseModel):
@@ -256,11 +256,10 @@ def cancel_mission(mission_code: str, _current_user=Depends(reusable_oauth2)):
 
 
 @app.post("/add_new_robot", dependencies=[Depends(reusable_oauth2)])
-def robot_code(
-    _robot_information: RobotInformations, _current_user=Depends(reusable_oauth2)
-):
+def robot_code(_robot_information: RobotCreat, _current_user=Depends(reusable_oauth2)):
     area = QueryDB.STATUS_RB
     _verify_token = _tokenjwt(_current_user)
+
     if _verify_token is not None:
 
         _mission_db = db.creat_robots(
@@ -543,11 +542,19 @@ def update_many_locations(
 
 
 @app.patch("/update_robotStatus", dependencies=[Depends(reusable_oauth2)])
-def update_robot_status(patch_request: dict, _current_user=Depends(reusable_oauth2)):
-    if _tokenjwt(_current_user) is not None:
-        update_db = db.update_robot_status(patch_request)
-        if update_db:
-            return update_db
+def update_robot_status(robot_request: dict, _current_user=Depends(reusable_oauth2)):
+    _verify_token = _tokenjwt(_current_user)
+    if _verify_token is not None:
+        _area = QueryDB.STATUS_RB
+        search_robot = {"ip_machine": robot_request["ip_machine"]}
+        # robot_request.update({"robot_connect": True})
+        _robot_update_value = db.update_database(
+            _area, search_robot, robot_request, _verify_token["username"]
+        )
+
+        # update_db = db.update_robot_status(patch_request)
+        if _robot_update_value:
+            return _robot_update_value
         else:
             return {"code": 0}
     raise HTTPException(status_code=404, detail="User not found")

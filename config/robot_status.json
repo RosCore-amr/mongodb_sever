@@ -1,8 +1,9 @@
 {
-    "robot_name": "robot_7",
+    "ip_machine" : "192.168.0.1",
+    "robot_code": "robot_7",
+    "robot_status" : "RUN",
+    "robot_type" : "amr",
     "battery": 40,
-    "status" : "EMG" ,
-    "mission" : "Runing",
-    "robot_type" : "amr", 
-    "ip" : "192.168.0.1"
-  }
+    "robot_connect" : true,
+    "mission" : "MISSION-0-09-27-08:43:32"
+}

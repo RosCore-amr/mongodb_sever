@@ -21,11 +21,7 @@ from bson.timestamp import Timestamp
 
 # pydantic.Json.ENCODERS_BY_TYPE[ObjectId] = str
 
-from config import (
-    LocationStatus,
-    SortSearch,
-    MapCode,
-)
+from config import LocationStatus, SortSearch, MapCode, TaskStatus
 
 
 class LogLevel:
@@ -77,6 +73,7 @@ class MongoDB:
             QueryDB.ACCOUNT,
             QueryDB.ACTIVITIES,
             QueryDB.EXCUTE_MISSION,
+            QueryDB.MODEL,
         ]
 
         value_account = {
@@ -102,25 +99,28 @@ class MongoDB:
             "creatAT": "00-00-00:00:00",
         }
         value_robot_status = {
-            "robot_code": "initial",
-            "battery": 100,
-            "status": "initial",
-            "mission": "initial",
-            "robot_type": "initial",
-            "ip": "000.000.0.0",
+            "ip_machine": "192.168.0.1",
+            "robot_code": "robot_7",
+            "robot_status": "RUN",
+            "robot_type": "amr",
+            "battery": 40,
+            # "robot_connect": true,
+            # "mission": "MISSION-0-09-27-08:43:32",
         }
+
         robot_activity = {
             "robot_code": "initial",
             "msg": "test_initial",
             "date": "08-28-09:21:20",
         }
         excute_mission = {
-            "excute_code": "transport_empty_cart",
-            "mission_wait": [],
-            # "mission_next": "",
+            "excute_code": "transport_goods",
             "mission_excute": [],
-            "mission_type": 46,
+            "map_code": "pickup_locations",
+            "mission_type": 42,
         }
+
+        model = {"model": "ss"}
         initial_mapping = [
             value_robot_status,
             value_location,
@@ -130,6 +130,7 @@ class MongoDB:
             value_account,
             robot_activity,
             excute_mission,
+            model,
         ]
 
         database_name = self.client.list_database_names()
@@ -206,13 +207,22 @@ class MongoDB:
 
     def creat_robots(self, _area, comtemplate, creator):
         _collection = self.work_db[_area]
-        comtemplate.update({"lastUpdate": {"date": datetime.now()}})
-
-        if _collection.find_one({"robot_code": comtemplate["robot_code"]}) != None:
-            return False
-        else:
-            self.import_db(_collection, comtemplate)
-            return "creat success acoount "
+        robot_control_value = {
+            "robot_connect": False,
+            "map_code": "",
+            "robot_status": "",
+            "battery": 0,
+        }
+        # _robot_information.__dict__.update(robot_control_value)
+        # comtemplate.update({"lastUpdate": {"date": datetime.now()}})
+        comtemplate.update(robot_control_value)
+        msg = {"code": 0}
+        _data_creat = self.update_time_histories(comtemplate, creator)
+        # return _data_creat
+        if _collection.find_one({"ip_machine": comtemplate["ip_machine"]}) != None:
+            return msg
+        _creat_robot = self.import_db(_collection, _data_creat)
+        return {"code": _creat_robot}
 
     def creat_data(self, _area, data):
         _collection = self.work_db[_area]
@@ -258,37 +268,6 @@ class MongoDB:
         if _query == None:
             return False
         return self.json_payload(_query)
-
-    def update_robot_status(self, status_code):
-        area = QueryDB.STATUS_RB
-        _collection = self.work_db[area]
-        _result_code = {"code": 0}
-        search_robot = {"robot_code": status_code["robot_code"]}
-        status_code.update({"lastUpdate": {"date": datetime.now()}})
-        value_update = {
-            "$set": status_code
-            # "$setOnInsert": {"created_update": datetime.now()},
-            # "$currentDate": {"lastUpdate": datetime.now()},
-        }
-
-        # db.collection.updateOne(
-        #     {"key": 5},
-        #     {
-        #         "$set": {"updated_at": datetime.now()},
-        #         "$setOnInsert": {"created_update": datetime.now()},
-        #     },
-        #     upsert=True,
-        # )
-        _update = _collection.find_one_and_update(
-            search_robot,
-            value_update,
-            upsert=False,
-        )
-        # return _update
-        if _update is not None:
-            _result_code = {"code": 1}
-            return _result_code
-        return _result_code
 
     def query_robot_status(self, _robot_name):
         area = QueryDB.STATUS_RB
@@ -415,19 +394,7 @@ class MongoDB:
     def update_database(self, area, location, value, username):
         _collection = self.work_db[area]
 
-        # "lastAT": datetime.now()
-
-        # status_list = {"username": username}
-        histories_update = dict(value)
-        histories_update.setdefault("username", username)
-        value.update(
-            {
-                "lastAT": datetime.now(),
-                "status_list": histories_update,
-            }
-        )
-
-        value_update = {"$set": value}
+        value_update = {"$set": self.update_time_histories(value, username)}
         # print("value_update", value_update)
         _update = _collection.find_one_and_update(
             location,
@@ -437,10 +404,19 @@ class MongoDB:
 
         if _update is None:
             return None
+        _update.update({"code": 1})
         return self.json_payload(_update)
-        # if _update.raw_result["n"]:
-        #     return True
-        return False
+
+    def update_time_histories(self, value, username):
+        histories_update = dict(value)
+        histories_update.setdefault("username", username)
+        value.update(
+            {
+                "lastAT": datetime.now(),
+                "status_list": histories_update,
+            }
+        )
+        return value
 
     def update_excute_mission(self, area, location, value, username):
         _collection = self.work_db[area]
@@ -596,7 +572,7 @@ class MongoDB:
 
     def mission_cancel_process(self, _area, _search, username):
         # print("mission_code", _search)
-        _mission_update = {"mission_state": 9}
+        _mission_update = {"mission_state": TaskStatus.CANCEL.value}
         cancel_mission = self.update_database(_area, _search, _mission_update, username)
         if cancel_mission is None:
             return {"code": 0, "msg": "dont have mission like that "}
@@ -661,7 +637,7 @@ class MongoDB:
             # + "-"
             # + _end_location["map_code"],
             # "sector": "asd",
-            "mission_state": 1,
+            "mission_state": TaskStatus.CREATE.value,
             "code": 1,
             "creator": creator,
             "creatAT": datetime.now(),
