@@ -18,6 +18,7 @@ import copy
 from bson import json_util, ObjectId
 from dataclasses import dataclass
 from bson.timestamp import Timestamp
+from ament_index_python.packages import get_package_share_directory
 
 # pydantic.Json.ENCODERS_BY_TYPE[ObjectId] = str
 
@@ -140,10 +141,19 @@ class MongoDB:
                 # for initial in list_db:
                 collection = self.work_db[list_db[initial]]
                 collection.insert_one(initial_mapping[initial])
-
+        self.initial()
         # self.filled_data(QueryDB.PICKUP_LOCATION, "zone1", 7)
-        # for i in range(1, 49):
-        #     self.built_location(QueryDB.RETURN_LOCATION, i)
+        # for i in range(1, 41):
+        #     self.built_location(QueryDB.PICKUP_LOCATION, i)
+        # test_dict = {"location_code": "zone20", "map_code": "pickup_locations"}
+        # test = self.find_model(test_dict)
+        # print("test", test)
+
+    def initial(self):
+        _config_path_ip_machine = os.path.join(
+            get_package_share_directory("db_mongo"), "config", "ip_machine.json"
+        )
+        self.config_path_ip_machine = self.load_config(_config_path_ip_machine)
 
     def built_location(self, _area, n_location):
 
@@ -151,19 +161,19 @@ class MongoDB:
         _collection = self.work_db[_area]
         document = {
             "name": "zone" + str(n_location),
-            # "line": [
-            #     random.randint(1, 49),
-            #     random.randint(1, 49),
-            #     random.randint(1, 49),
-            #     random.randint(1, 49),
-            # ],
-            "line": (n_location),
+            "line": [
+                random.randint(1, 49),
+                random.randint(1, 49),
+                random.randint(1, 49),
+                random.randint(1, 49),
+            ],
+            # "line": (n_location),
             "point": "LM" + str(n_location),
-            "model": "",
             "kitting": True,
             "location_status": 3,
             "map_code": _area,
             "location_priority": 1,
+            "model": str(_area + "_model_" + str(n_location)),
             "status_before_change": {"name": "zone" + str(n_location)},
             "restore": True,
             "lastAT": datetime.now(),
@@ -431,6 +441,43 @@ class MongoDB:
         # print(_update)
         return self.json_payload(_update)
 
+    def clear_data_location(self, _area, _value, ip, verify_token):
+        _collection = self.work_db[_area]
+        # print(
+        #     "self.config_path_ip_machine", self.config_path_ip_machine[_value["name"]]
+        # )
+        # _verify_role = bool(self.config_path_ip_machine[_value["name"]] != ip)
+        # print("_verify_role", _verify_role)
+        # if verify_token["role"] != 10:
+        #     return {
+        #         "code": 0,
+        #         "msg": "You do not have permission to update this location",
+        #     }
+        # return "You do not have permission to update this location."
+        # print("asd", _value["name"])
+        if _area == "pickup_locations":
+            data_clear = {
+                # "name": "zone1",
+                "location_status": 5,
+                "model": None,
+                "line": [],
+                # "map_code": "pickup_locations",
+            }
+        elif _area == "return_locations":
+            data_clear = {
+                # "name": "zone1",
+                "location_status": 6,
+                "model": None,
+                # "line": [],
+                # "map_code": "return_locations",
+            }
+        else:
+            pass
+        _update = self.update_database(
+            _area, _value, data_clear, verify_token["username"]
+        )
+        return _update
+
     def update_location_clear_sector(self, area, value_clear):
         _collection = self.work_db[area]
 
@@ -530,9 +577,10 @@ class MongoDB:
         response.reverse()
         return response
 
-    def find_sector(self, zone):
-        search_location = {"name": zone}
-        value = self.query_database(QueryDB.PICKUP_LOCATION, search_location)
+    def find_model(self, grab_location):
+
+        search_location = {"name": grab_location["location_code"]}
+        value = self.query_database(grab_location["map_code"], search_location)
         if value is not None and value:
             return value["model"]
         return ""
@@ -636,7 +684,7 @@ class MongoDB:
             # "end_location": _end_location["location_code"]
             # + "-"
             # + _end_location["map_code"],
-            # "sector": "asd",
+            "model": self.find_model(_destination_mission["entry_location"]),
             "mission_state": TaskStatus.CREATE.value,
             "code": 1,
             "creator": creator,
@@ -726,7 +774,16 @@ class MongoDB:
         _convert_json = json.loads(json_util.dumps(data, default=str))
         return _convert_json
 
-        # return data
+    def load_config(self, path):
+        config = {}
+        with open(path, "r") as stream:
+            try:
+                d = yaml.load(stream, Loader=yaml.FullLoader)
+                for key, val in d.items():
+                    config[key] = val
+                return config
+            except yaml.YAMLError as e:
+                print(e)
 
 
 MongoDB()

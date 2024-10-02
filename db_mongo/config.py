@@ -20,9 +20,11 @@ class TaskStatus(Enum):
     EXCEPTION = 0
     CREATE = 1
     EXECUTING = 2
-    SENDING = 3
-    CANCEL = 9
+    TAKE = 5
+    ELEVATOR = 7
+    # PUT = 3
     RESENDING = 6
+    CANCEL = 9
     COMPLETE = 11
 
 

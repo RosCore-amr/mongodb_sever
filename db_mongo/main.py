@@ -6,7 +6,7 @@ import uvicorn
 
 from datetime import datetime, timedelta, timezone
 from typing import Union, Any
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from pydantic import BaseModel, ValidationError
 from fastapi.security import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
@@ -220,7 +220,7 @@ def creat_account(request_data: LoginRequest):
 
 
 @app.post("/creat_mission", dependencies=[Depends(reusable_oauth2)])
-def mission_code(mission: dict, _current_user=Depends(reusable_oauth2)):
+def creat_mission(mission: dict, _current_user=Depends(reusable_oauth2)):
     # Response:
     # ```
     # {
@@ -256,7 +256,9 @@ def cancel_mission(mission_code: str, _current_user=Depends(reusable_oauth2)):
 
 
 @app.post("/add_new_robot", dependencies=[Depends(reusable_oauth2)])
-def robot_code(_robot_information: RobotCreat, _current_user=Depends(reusable_oauth2)):
+def add_new_robot(
+    _robot_information: RobotCreat, _current_user=Depends(reusable_oauth2)
+):
     area = QueryDB.STATUS_RB
     _verify_token = _tokenjwt(_current_user)
 
@@ -283,7 +285,7 @@ def robot_activities(
 
 
 @app.post("/seek_stock", dependencies=[Depends(reusable_oauth2)])
-def search_location_stock(request_data: dict, _current_user=Depends(reusable_oauth2)):
+def seek_stock(request_data: dict, _current_user=Depends(reusable_oauth2)):
 
     _verify_token = _tokenjwt(_current_user)
     if _verify_token is not None:
@@ -295,7 +297,7 @@ def search_location_stock(request_data: dict, _current_user=Depends(reusable_oau
 
 
 @app.post("/creat_model/{model_name}", dependencies=[Depends(reusable_oauth2)])
-def mission_code(model_name: str, _current_user=Depends(reusable_oauth2)):
+def creat_model(model_name: str, _current_user=Depends(reusable_oauth2)):
 
     _verify_token = _tokenjwt(_current_user)
     if _verify_token is not None:
@@ -651,6 +653,25 @@ def update_location(_location_update: dict, _current_user=Depends(reusable_oauth
             return _update_db
         return {"code": 0}
         # return True
+    raise HTTPException(status_code=404, detail="User not found")
+
+
+@app.patch("/clear_location", dependencies=[Depends(reusable_oauth2)])
+def clear_location(
+    _location_update: dict, request: Request, _current_user=Depends(reusable_oauth2)
+):
+    _verify_token = _tokenjwt(_current_user)
+    if _verify_token is not None:
+        _ip_host = request.client.host
+
+        _area = _location_update["map_code"]
+        location_search = {"name": _location_update["name"]}
+        # print("role", _verify_token["role"])
+        # _update_db = db.restore_data(_area, location, _verify_token["username"])
+        _clear_location = db.clear_data_location(
+            _area, location_search, _ip_host, _verify_token
+        )
+        return _clear_location
     raise HTTPException(status_code=404, detail="User not found")
 
 
