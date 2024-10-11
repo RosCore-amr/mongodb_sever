@@ -50,6 +50,7 @@ class QueryDB:
     ACTIVITIES = "robot_activites"
     EXCUTE_MISSION = "mission_excute"
     MODEL = "model"
+    OTHER_LOCATION = "other_locations"
 
 
 @dataclass

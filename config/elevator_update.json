@@ -1,0 +1,8 @@
+{
+    "elevator_name": "elevator1",
+    "elevator_status": {
+        "map_position": "asdas_locations",
+        "door": false,
+        "operating": true
+    }
+}

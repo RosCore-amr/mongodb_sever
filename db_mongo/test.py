@@ -41,10 +41,31 @@ def parse_opts():
 if __name__ == "__main__":
     (options, args) = parse_opts()
 
-    db = MongoDB("mongodb://localhost:27017/")
+    # db = MongoDB("mongodb://localhost:27017/")
+    data = {
+        "elevator_name": "elevator1",
+        "location_type": "elavator",
+        "robot_position": {
+            "pickup_locations": {
+                "floor": 1,
+                "possition_out": "LM75",
+                "position_in": "LM77",
+            },
+            "return_locations": {
+                "floor": 2,
+                "possition_out": "LM76",
+                "position_in": "LM78",
+            },
+        },
+        "elevator_status": {
+            "map_position": "return_locations",
+            "door": true,
+            "operating": true,
+        },
+    }
     myquery = {"address": {"$gt": "S"}}
 
-    mission_test = db.test(myquery)
+    # mission_test = db.test(myquery)
 
     # mission_dict = db.printJson(db.getQueueMission(options.current_pose))
     # db.updateQueueMission("2/7", "Doing")

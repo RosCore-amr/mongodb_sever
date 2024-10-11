@@ -1,0 +1,18 @@
+{
+    "elevator_name": "elevator_1",
+    "location_type": "elavator",
+
+    "robot_position": {
+        "acs_id" : 1,
+        "pickup_locations": {
+            "floor": 1,
+            "possition_out": "LM75",
+            "position_in": "LM77"
+        },
+        "return_locations": {
+            "floor": 2,
+            "possition_out": "LM76",
+            "position_in": "LM78"
+        }
+    }
+}

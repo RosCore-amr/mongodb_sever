@@ -308,6 +308,18 @@ def creat_model(model_name: str, _current_user=Depends(reusable_oauth2)):
     raise HTTPException(status_code=404, detail="User not found")
 
 
+@app.get("/get_elevator_all", dependencies=[Depends(reusable_oauth2)])
+def get_elevator_all():
+
+    area = QueryDB.OTHER_LOCATION
+    # area =  QueryDB.l
+    # myquery = {}
+    search_robot = {"location_type": "elavator"}
+
+    location = db.locations_request(area, search_robot)
+    return location
+
+
 @app.get("/all_acoount", dependencies=[Depends(reusable_oauth2)])
 def get_all_account():
 
@@ -540,6 +552,23 @@ def update_many_locations(
         if update_db:
             return update_db
         return {"code": 0}
+    raise HTTPException(status_code=404, detail="User not found")
+
+
+@app.patch("/update_elevator", dependencies=[Depends(reusable_oauth2)])
+def update_elevator(elevator_request: dict, _current_user=Depends(reusable_oauth2)):
+    _verify_token = _tokenjwt(_current_user)
+    if _verify_token is not None:
+        _area = QueryDB.OTHER_LOCATION
+        search_ = {"elevator_name": elevator_request["elevator_name"]}
+        # robot_request.update({"robot_connect": True})
+        _update_value = db.update_database(
+            _area, search_, elevator_request, _verify_token["username"]
+        )
+        if _update_value:
+            return _update_value
+        else:
+            return {"code": 0}
     raise HTTPException(status_code=404, detail="User not found")
 
 
